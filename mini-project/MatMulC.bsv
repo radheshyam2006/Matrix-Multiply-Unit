@@ -52,6 +52,7 @@ module mkMatMul (MatMul_IFC);
       if (rg_step == 3) begin
          rg_busy <= False;
          rg_step <= 0;
+         f_rsp.enq (mm_rsp_none);
       end
       else
          rg_step <= rg_step + 1;
@@ -86,7 +87,6 @@ module mkMatMul (MatMul_IFC);
       rg_busy <= True;
       rg_step <= 1;
       rg_load_bank <= f_other (bank);
-      f_rsp.enq (mm_rsp_none);
    endrule
 
    rule rl_read_c (f_req.first matches tagged ReadC .x &&& ! rg_busy);
