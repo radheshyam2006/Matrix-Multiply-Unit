@@ -12,6 +12,7 @@
 | W1 cycles × depth | 2,908,231 | 2,981,944 | 2,420,282 |
 | W2 cycles × depth | 21,229,639 | 22,249,528 | 17,387,066 |
 | Cells × depth | 8,034,360 | 3,480,848 | 3,809,498 |
+| MACs/request (W1 / W2) | 6.400 / 7.014 | 6.400 / 7.014 | 6.400 / 7.014 |
 
 All three designs passed W1 and W2 with zero errors. Design C also passed a directed test of partial operand updates, loads overlapping multiplication, response ordering, expected results, and destructive `ReadC`.
 
