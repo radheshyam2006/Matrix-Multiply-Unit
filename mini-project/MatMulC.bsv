@@ -20,7 +20,6 @@ endfunction
 (* synthesize *)
 module mkMatMul (MatMul_IFC);
 
-   // Two banks for operands
    Reg #(Vector #(2, A_Mat)) rg_a
       <- mkReg (replicate (replicate (replicate (0))));
 
@@ -31,14 +30,12 @@ module mkMatMul (MatMul_IFC);
 
    Reg #(Bool) rg_busy <- mkReg (False);
    Reg #(Bit #(2)) rg_step <- mkReg (0);
-
-   // Bank currently receiving new operands
    Reg #(Bit #(1)) rg_load_bank <- mkReg (0);
 
    FIFOF #(MM_Req) f_req <- mkFIFOF;
    FIFOF #(MM_Rsp) f_rsp <- mkFIFOF;
 
-   // Execute one K step per cycle using the other bank
+   // Compute one K contribution per cycle.
    rule rl_mul_step (rg_busy);
       let bank = f_other (rg_load_bank);
       let next_c = f_step (rg_a[bank], rg_b[bank],
@@ -55,7 +52,7 @@ module mkMatMul (MatMul_IFC);
       end
    endrule
 
-   // Load A into the inactive bank
+   // Load A into the bank not used by the active multiplication.
    rule rl_load_a (f_req.first matches tagged LoadA .w);
       f_req.deq;
 
@@ -70,7 +67,7 @@ module mkMatMul (MatMul_IFC);
       f_rsp.enq (mm_rsp_none);
    endrule
 
-   // Load B into the inactive bank
+   // Load B into the bank not used by the active multiplication.
    rule rl_load_b (f_req.first matches tagged LoadB .w);
       f_req.deq;
 
@@ -85,25 +82,33 @@ module mkMatMul (MatMul_IFC);
       f_rsp.enq (mm_rsp_none);
    endrule
 
-   // Start multiplication using the currently loaded bank
+   // Start Mul and copy the current operands into the next loading bank.
    rule rl_mul_start (
       f_req.first matches tagged Mul &&& !rg_busy
    );
       f_req.deq;
 
       let bank = rg_load_bank;
+      let next_bank = f_other (bank);
 
       rg_c <= f_step (rg_a[bank], rg_b[bank], rg_c, 0);
       rg_busy <= True;
       rg_step <= 1;
 
-      // Switch to the other bank for subsequent loads
-      rg_load_bank <= f_other (bank);
+      // Preserve rows not overwritten by subsequent loads.
+      let a = rg_a;
+      let b = rg_b;
+      a[next_bank] = a[bank];
+      b[next_bank] = b[bank];
+
+      rg_a <= a;
+      rg_b <= b;
+      rg_load_bank <= next_bank;
 
       f_rsp.enq (mm_rsp_none);
    endrule
 
-   // Read and clear one C element
+   // Read and clear one accumulator element.
    rule rl_read_c (
       f_req.first matches tagged ReadC .x &&& !rg_busy
    );
